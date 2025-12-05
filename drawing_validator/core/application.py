@@ -11,9 +11,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.pdf_processor import PDFProcessor
 from core.settings import APP_TITLE, APP_WIDTH, APP_HEIGHT
+from core.image_processor import ImagePreprocessor
 from ui.main_window import MainWindow
 from ui.file_browser import FileBrowser
 from utils.helpers import get_safe_filename
+from detection.seal_detector import SealDetector
 
 
 class DrawingValidatorApp(tk.Tk):
@@ -35,9 +37,21 @@ class DrawingValidatorApp(tk.Tk):
         # Initialize components
         self.pdf_processor = PDFProcessor()
         self.file_browser = FileBrowser()
+        self.image_preprocessor = ImagePreprocessor()
+
+        # Initialize detection engine (Phase 2)
+        try:
+            self.seal_detector = SealDetector()
+            self.detection_enabled = True
+        except Exception as e:
+            print(f"Warning: Could not initialize seal detector: {e}")
+            print("Detection features will be disabled.")
+            self.seal_detector = None
+            self.detection_enabled = False
 
         # Current document state
         self.current_document: Optional[Dict] = None
+        self.detection_results = None  # Store detection results
 
         # Create main window UI
         self.main_window = MainWindow(
@@ -125,10 +139,10 @@ class DrawingValidatorApp(tk.Tk):
 
     def process_current_file(self) -> None:
         """
-        Process the currently loaded file.
+        Process the currently loaded file with Phase 2 detection.
 
-        This is a placeholder for Phase 2 processing logic.
-        Currently just prints the document information to the console.
+        This method runs the detection engine to find engineering seals
+        and signatures in the loaded document.
         """
         if not self.current_document:
             messagebox.showwarning(
@@ -137,63 +151,119 @@ class DrawingValidatorApp(tk.Tk):
             )
             return
 
+        # Check if detection is enabled
+        if not self.detection_enabled or not self.seal_detector:
+            messagebox.showwarning(
+                "Detection Unavailable",
+                "Detection engine is not available.\n"
+                "Please ensure OpenCV and NumPy are installed:\n"
+                "pip install opencv-python numpy"
+            )
+            return
+
         # Update status
-        self.main_window.update_status("Processing document...")
+        self.main_window.update_status("Running seal detection...")
 
-        # Print document information to console
-        print("\n" + "=" * 70)
-        print("PROCESSING DOCUMENT - Phase 1 Output")
-        print("=" * 70)
-
-        # Print all document details
-        print(f"\nFilepath: {self.current_document.get('filepath')}")
-        print(f"Page Count: {self.current_document.get('page_count')}")
-        print(f"Has Image: {self.current_document.get('first_page_image') is not None}")
-
-        # Print text content (truncated)
-        text = self.current_document.get('source_text', '')
-        if text:
-            text_preview = text[:500] + "..." if len(text) > 500 else text
-            print(f"\nExtracted Text Preview:")
-            print("-" * 70)
-            print(text_preview)
-            print("-" * 70)
-        else:
-            print("\nNo text extracted (image file or scanned PDF)")
-
-        # Print error if any
-        error = self.current_document.get('error')
-        if error:
-            print(f"\nError: {error}")
-
-        # Try to get metadata (only for PDFs)
-        if self.current_document.get('filepath', '').lower().endswith('.pdf'):
-            try:
-                metadata = self.pdf_processor.get_document_metadata(
-                    self.current_document['filepath']
+        try:
+            # Get the first page image
+            first_page_image = self.current_document.get('first_page_image')
+            if not first_page_image:
+                messagebox.showerror(
+                    "Error",
+                    "No image available for detection."
                 )
-                print(f"\nMetadata:")
+                self.main_window.update_status("Ready")
+                return
+
+            # Convert PIL Image to OpenCV format
+            import numpy as np
+            cv_image = self.image_preprocessor.pil_to_cv2(first_page_image)
+
+            # Run detection
+            print("\n" + "=" * 70)
+            print("PHASE 2: SEAL DETECTION")
+            print("=" * 70)
+
+            detection_result = self.seal_detector.detect(cv_image, page_num=0)
+            self.detection_results = detection_result
+
+            # Print detection summary
+            summary = self.seal_detector.get_detection_summary(detection_result)
+            print(f"\nDetection Summary:")
+            print(f"  - Total detections: {summary['total_detections']}")
+            print(f"  - Processing time: {summary['processing_time']:.2f}s")
+            print(f"  - Image dimensions: {summary['image_dimensions']}")
+
+            print(f"\nDetections by method:")
+            for method, count in summary['by_method'].items():
+                if count > 0:
+                    print(f"  - {method}: {count}")
+
+            print(f"\nDetections by confidence:")
+            for level, count in summary['by_confidence'].items():
+                if count > 0:
+                    print(f"  - {level}: {count}")
+
+            # Print individual detections
+            if detection_result.regions:
+                print(f"\nDetailed Detection Results:")
                 print("-" * 70)
-                for key, value in metadata.items():
-                    if value and key != 'error':
-                        print(f"{key.capitalize()}: {value}")
+                for i, region in enumerate(detection_result.regions, 1):
+                    print(f"\n{i}. Region at ({region.x}, {region.y}) "
+                          f"[{region.width}x{region.height}]")
+                    print(f"   Method: {region.detection_method}")
+                    print(f"   Confidence: {region.confidence:.3f}")
+                    if region.template_name:
+                        print(f"   Template: {region.template_name}")
+                    if region.color:
+                        print(f"   Color: {region.color}")
                 print("-" * 70)
-            except Exception as e:
-                print(f"\nCould not extract metadata: {e}")
+            else:
+                print("\nNo seal or signature regions detected.")
 
-        print("\n" + "=" * 70)
-        print("END OF PROCESSING OUTPUT")
-        print("=" * 70 + "\n")
+            print("\n" + "=" * 70)
+            print("END OF DETECTION OUTPUT")
+            print("=" * 70 + "\n")
 
-        # Update status
-        self.main_window.update_status("Processing complete - check console output")
+            # Display image with detection overlays
+            if detection_result.regions:
+                self.main_window.display_image_with_detections(
+                    first_page_image,
+                    detection_result.regions
+                )
 
-        # Show completion message
-        messagebox.showinfo(
-            "Processing Complete",
-            "Document information has been printed to the console.\n"
-            "Check the terminal/console for detailed output."
-        )
+                status_msg = f"Detection complete: {len(detection_result.regions)} region(s) found"
+                self.main_window.update_status(status_msg)
+
+                # Show completion message with results
+                messagebox.showinfo(
+                    "Detection Complete",
+                    f"Found {len(detection_result.regions)} potential seal/signature region(s).\n\n"
+                    f"Processing time: {detection_result.processing_time:.2f}s\n"
+                    f"Check the console for detailed results."
+                )
+            else:
+                self.main_window.update_status("Detection complete: No seals found")
+                messagebox.showinfo(
+                    "Detection Complete",
+                    "No engineering seals or signatures detected.\n\n"
+                    "This could mean:\n"
+                    "- The document has no seals\n"
+                    "- The seals don't match the templates\n"
+                    "- Try adjusting detection parameters"
+                )
+
+        except Exception as e:
+            print(f"\nError during detection: {e}")
+            import traceback
+            traceback.print_exc()
+
+            messagebox.showerror(
+                "Detection Error",
+                f"An error occurred during detection:\n{str(e)}\n\n"
+                "Check the console for details."
+            )
+            self.main_window.update_status("Detection failed")
 
     def quit_application(self) -> None:
         """Exit the application."""

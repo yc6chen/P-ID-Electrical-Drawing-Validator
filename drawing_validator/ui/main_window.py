@@ -179,6 +179,16 @@ class MainWindow:
         """
         self.image_viewer.display_image(image)
 
+    def display_image_with_detections(self, image, detection_regions) -> None:
+        """
+        Display an image with detection overlays.
+
+        Args:
+            image: PIL Image to display
+            detection_regions: List of DetectedRegion objects
+        """
+        self.image_viewer.display_image_with_detections(image, detection_regions)
+
     def clear_image(self) -> None:
         """Clear the current image from the viewer."""
         self.image_viewer.clear()
@@ -200,8 +210,12 @@ class MainWindow:
         """Show about dialog."""
         messagebox.showinfo(
             "About",
-            "Engineering Drawing Validator - Phase 1\n\n"
+            "Engineering Drawing Validator - Phase 2\n\n"
             "A tool for validating P&ID and electrical drawings\n"
             "for P.Eng signatures from Canadian engineering associations.\n\n"
-            "Phase 1: Foundation & Basic UI"
+            "Phase 2: Detection Engine\n"
+            "- Template matching for known seals\n"
+            "- Contour detection for signature blocks\n"
+            "- Color-based seal detection\n"
+            "- Visual detection overlay"
         )
