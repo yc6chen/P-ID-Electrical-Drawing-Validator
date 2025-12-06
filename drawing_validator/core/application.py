@@ -16,6 +16,9 @@ from ui.main_window import MainWindow
 from ui.file_browser import FileBrowser
 from utils.helpers import get_safe_filename
 from detection.seal_detector import SealDetector
+from ocr.text_extractor import OCRTextExtractor
+from validation.association_validator import AssociationValidator
+from validation.validation_models import RegionValidation, PageValidationResult
 
 
 class DrawingValidatorApp(tk.Tk):
@@ -49,9 +52,22 @@ class DrawingValidatorApp(tk.Tk):
             self.seal_detector = None
             self.detection_enabled = False
 
+        # Initialize OCR and validation engines (Phase 3)
+        try:
+            self.ocr_extractor = OCRTextExtractor(use_easyocr_fallback=True)
+            self.association_validator = AssociationValidator()
+            self.validation_enabled = True
+        except Exception as e:
+            print(f"Warning: Could not initialize OCR/validation: {e}")
+            print("Validation features will be disabled.")
+            self.ocr_extractor = None
+            self.association_validator = None
+            self.validation_enabled = False
+
         # Current document state
         self.current_document: Optional[Dict] = None
         self.detection_results = None  # Store detection results
+        self.validation_results = None  # Store validation results
 
         # Create main window UI
         self.main_window = MainWindow(
@@ -225,6 +241,59 @@ class DrawingValidatorApp(tk.Tk):
             print("END OF DETECTION OUTPUT")
             print("=" * 70 + "\n")
 
+            # PHASE 3: OCR and Validation
+            region_validations = []
+            if detection_result.regions and self.validation_enabled:
+                print("\n" + "=" * 70)
+                print("PHASE 3: OCR & VALIDATION")
+                print("=" * 70)
+
+                self.main_window.update_status("Running OCR and validation...")
+
+                for i, region in enumerate(detection_result.regions, 1):
+                    print(f"\nProcessing Region {i}/{len(detection_result.regions)}...")
+
+                    # Extract ROI
+                    roi = region.extract_roi(cv_image)
+
+                    # Run OCR
+                    ocr_result = self.ocr_extractor.extract_text_from_region(roi)
+                    print(f"  OCR Engine: {ocr_result.engine_used}")
+                    print(f"  Extracted Text: {ocr_result.text[:100]}..." if len(ocr_result.text) > 100 else f"  Extracted Text: {ocr_result.text}")
+                    print(f"  OCR Confidence: {ocr_result.confidence:.3f}")
+
+                    # Run validation if text was extracted
+                    if ocr_result.has_text:
+                        validation_result = self.association_validator.validate_text(
+                            ocr_result.text, roi
+                        )
+                        print(f"  Validation: {'VALID' if validation_result.valid else 'INVALID'}")
+                        print(f"  Confidence: {validation_result.confidence:.3f}")
+                        if validation_result.associations:
+                            print(f"  Associations: {', '.join(validation_result.associations)}")
+                        if validation_result.license_numbers:
+                            print(f"  License Numbers: {', '.join(validation_result.license_numbers)}")
+
+                        region_validations.append(RegionValidation(
+                            region=region,
+                            ocr_result=ocr_result,
+                            validation_result=validation_result,
+                            roi_image=roi
+                        ))
+
+                print("\n" + "=" * 70)
+                print("END OF VALIDATION OUTPUT")
+                print("=" * 70 + "\n")
+
+                # Create page validation result
+                import time
+                self.validation_results = PageValidationResult(
+                    page_number=0,
+                    region_validations=region_validations,
+                    has_valid_signature=any(rv.is_valid_signature for rv in region_validations),
+                    processing_time=time.time()
+                )
+
             # Display image with detection overlays
             if detection_result.regions:
                 self.main_window.display_image_with_detections(
@@ -232,16 +301,32 @@ class DrawingValidatorApp(tk.Tk):
                     detection_result.regions
                 )
 
-                status_msg = f"Detection complete: {len(detection_result.regions)} region(s) found"
+                # Prepare status message
+                if region_validations:
+                    valid_count = sum(1 for rv in region_validations if rv.is_valid_signature)
+                    status_msg = f"Complete: {len(detection_result.regions)} regions, {valid_count} valid signature(s)"
+                else:
+                    status_msg = f"Detection complete: {len(detection_result.regions)} region(s) found"
+
                 self.main_window.update_status(status_msg)
 
                 # Show completion message with results
-                messagebox.showinfo(
-                    "Detection Complete",
-                    f"Found {len(detection_result.regions)} potential seal/signature region(s).\n\n"
-                    f"Processing time: {detection_result.processing_time:.2f}s\n"
-                    f"Check the console for detailed results."
-                )
+                if region_validations:
+                    valid_count = sum(1 for rv in region_validations if rv.is_valid_signature)
+                    messagebox.showinfo(
+                        "Processing Complete",
+                        f"Detection: {len(detection_result.regions)} region(s) found\n"
+                        f"Validation: {valid_count} valid signature(s)\n\n"
+                        f"Processing time: {detection_result.processing_time:.2f}s\n"
+                        f"Check the console for detailed results."
+                    )
+                else:
+                    messagebox.showinfo(
+                        "Detection Complete",
+                        f"Found {len(detection_result.regions)} potential seal/signature region(s).\n\n"
+                        f"Processing time: {detection_result.processing_time:.2f}s\n"
+                        f"Check the console for detailed results."
+                    )
             else:
                 self.main_window.update_status("Detection complete: No seals found")
                 messagebox.showinfo(
