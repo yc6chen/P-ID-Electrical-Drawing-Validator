@@ -18,7 +18,10 @@ def main():
         app = DrawingValidatorApp()
         app.run()
     except Exception as e:
+        import traceback
         print(f"Error starting application: {e}")
+        print("\nFull traceback:")
+        traceback.print_exc()
         sys.exit(1)
 
 
