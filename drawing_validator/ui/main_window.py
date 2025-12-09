@@ -20,7 +20,13 @@ class MainWindow:
         root: tk.Tk,
         on_open_file: Callable,
         on_process: Callable,
-        on_exit: Callable
+        on_exit: Callable,
+        on_batch_process: Optional[Callable] = None,
+        on_export_pdf: Optional[Callable] = None,
+        on_export_csv: Optional[Callable] = None,
+        on_settings: Optional[Callable] = None,
+        on_next_page: Optional[Callable] = None,
+        on_prev_page: Optional[Callable] = None
     ):
         """
         Initialize the main window layout.
@@ -30,11 +36,23 @@ class MainWindow:
             on_open_file: Callback for opening files
             on_process: Callback for processing current file
             on_exit: Callback for exiting application
+            on_batch_process: Callback for batch processing
+            on_export_pdf: Callback for PDF export
+            on_export_csv: Callback for CSV export
+            on_settings: Callback for settings dialog
+            on_next_page: Callback for next page navigation
+            on_prev_page: Callback for previous page navigation
         """
         self.root = root
         self.on_open_file = on_open_file
         self.on_process = on_process
         self.on_exit = on_exit
+        self.on_batch_process = on_batch_process
+        self.on_export_pdf = on_export_pdf
+        self.on_export_csv = on_export_csv
+        self.on_settings = on_settings
+        self.on_next_page = on_next_page
+        self.on_prev_page = on_prev_page
 
         # Create components
         self._create_menu_bar()
@@ -51,15 +69,47 @@ class MainWindow:
         file_menu = tk.Menu(menubar, tearoff=0)
         file_menu.add_command(label="Open File...", command=self.on_open_file, accelerator="Ctrl+O")
         file_menu.add_separator()
+
+        # Phase 4: Batch Processing
+        if self.on_batch_process:
+            file_menu.add_command(label="Batch Processing...", command=self.on_batch_process, accelerator="Ctrl+B")
+            file_menu.add_separator()
+
+        # Phase 4: Export submenu
+        export_menu = tk.Menu(file_menu, tearoff=0)
+        if self.on_export_pdf:
+            export_menu.add_command(label="Export to PDF Report...", command=self.on_export_pdf)
+        if self.on_export_csv:
+            export_menu.add_command(label="Export to CSV...", command=self.on_export_csv)
+        if self.on_export_pdf or self.on_export_csv:
+            file_menu.add_cascade(label="Export", menu=export_menu)
+            file_menu.add_separator()
+
         file_menu.add_command(label="Exit", command=self.on_exit, accelerator="Ctrl+Q")
         menubar.add_cascade(label="File", menu=file_menu)
 
-        # View Menu (stubs for Phase 2)
+        # View Menu
         view_menu = tk.Menu(menubar, tearoff=0)
+
+        # Phase 4: Page Navigation
+        if self.on_prev_page:
+            view_menu.add_command(label="Previous Page", command=self.on_prev_page, accelerator="Ctrl+Left")
+        if self.on_next_page:
+            view_menu.add_command(label="Next Page", command=self.on_next_page, accelerator="Ctrl+Right")
+
+        if self.on_prev_page or self.on_next_page:
+            view_menu.add_separator()
+
         view_menu.add_command(label="Zoom In", command=self._stub_zoom_in, accelerator="Ctrl++")
         view_menu.add_command(label="Zoom Out", command=self._stub_zoom_out, accelerator="Ctrl+-")
         view_menu.add_command(label="Fit to Window", command=self._stub_fit_window, accelerator="Ctrl+0")
         menubar.add_cascade(label="View", menu=view_menu)
+
+        # Phase 4: Tools Menu
+        if self.on_settings:
+            tools_menu = tk.Menu(menubar, tearoff=0)
+            tools_menu.add_command(label="Settings...", command=self.on_settings, accelerator="Ctrl+,")
+            menubar.add_cascade(label="Tools", menu=tools_menu)
 
         # Help Menu
         help_menu = tk.Menu(menubar, tearoff=0)
@@ -69,6 +119,16 @@ class MainWindow:
         # Bind keyboard shortcuts
         self.root.bind('<Control-o>', lambda e: self.on_open_file())
         self.root.bind('<Control-q>', lambda e: self.on_exit())
+
+        # Phase 4: Additional shortcuts
+        if self.on_batch_process:
+            self.root.bind('<Control-b>', lambda e: self.on_batch_process())
+        if self.on_settings:
+            self.root.bind('<Control-comma>', lambda e: self.on_settings())
+        if self.on_prev_page:
+            self.root.bind('<Control-Left>', lambda e: self.on_prev_page())
+        if self.on_next_page:
+            self.root.bind('<Control-Right>', lambda e: self.on_next_page())
 
     def _create_toolbar(self) -> None:
         """Create the toolbar with action buttons."""
@@ -94,6 +154,56 @@ class MainWindow:
 
         # Separator
         ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=2)
+
+        # Phase 4: Page Navigation buttons
+        if self.on_prev_page:
+            self.prev_page_button = ttk.Button(
+                toolbar,
+                text="◀ Prev",
+                command=self.on_prev_page,
+                state=tk.DISABLED
+            )
+            self.prev_page_button.pack(side=tk.LEFT, padx=2, pady=2)
+
+        # Page info label
+        self.page_info_var = tk.StringVar(value="")
+        self.page_info_label = ttk.Label(
+            toolbar,
+            textvariable=self.page_info_var,
+            width=15
+        )
+        self.page_info_label.pack(side=tk.LEFT, padx=5, pady=2)
+
+        if self.on_next_page:
+            self.next_page_button = ttk.Button(
+                toolbar,
+                text="Next ▶",
+                command=self.on_next_page,
+                state=tk.DISABLED
+            )
+            self.next_page_button.pack(side=tk.LEFT, padx=2, pady=2)
+
+        # Separator
+        if self.on_prev_page or self.on_next_page:
+            ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=2)
+
+        # Phase 4: Batch Processing button
+        if self.on_batch_process:
+            self.batch_button = ttk.Button(
+                toolbar,
+                text="Batch Process",
+                command=self.on_batch_process
+            )
+            self.batch_button.pack(side=tk.LEFT, padx=2, pady=2)
+
+        # Phase 4: Settings button
+        if self.on_settings:
+            self.settings_button = ttk.Button(
+                toolbar,
+                text="⚙ Settings",
+                command=self.on_settings
+            )
+            self.settings_button.pack(side=tk.RIGHT, padx=2, pady=2)
 
     def _create_main_layout(self) -> None:
         """Create the main content layout with side panel and viewer."""
@@ -210,12 +320,38 @@ class MainWindow:
         """Show about dialog."""
         messagebox.showinfo(
             "About",
-            "Engineering Drawing Validator - Phase 2\n\n"
-            "A tool for validating P&ID and electrical drawings\n"
+            "Engineering Drawing Validator - Phase 4 Complete\n\n"
+            "A production-ready tool for validating P&ID and electrical drawings\n"
             "for P.Eng signatures from Canadian engineering associations.\n\n"
-            "Phase 2: Detection Engine\n"
-            "- Template matching for known seals\n"
-            "- Contour detection for signature blocks\n"
-            "- Color-based seal detection\n"
-            "- Visual detection overlay"
+            "Features:\n"
+            "✓ Multi-method detection engine\n"
+            "✓ OCR & validation with dual engines\n"
+            "✓ Batch processing with progress tracking\n"
+            "✓ Multi-page PDF navigation\n"
+            "✓ PDF & CSV export\n"
+            "✓ Configurable settings\n\n"
+            "Version 1.0.0"
         )
+
+    def update_page_info(self, page_info: str) -> None:
+        """
+        Update page information display.
+
+        Args:
+            page_info: Page info string (e.g., "Page 1 of 5")
+        """
+        if hasattr(self, 'page_info_var'):
+            self.page_info_var.set(page_info)
+
+    def enable_page_navigation(self, has_prev: bool, has_next: bool) -> None:
+        """
+        Enable/disable page navigation buttons.
+
+        Args:
+            has_prev: Whether previous page is available
+            has_next: Whether next page is available
+        """
+        if hasattr(self, 'prev_page_button'):
+            self.prev_page_button.config(state=tk.NORMAL if has_prev else tk.DISABLED)
+        if hasattr(self, 'next_page_button'):
+            self.next_page_button.config(state=tk.NORMAL if has_next else tk.DISABLED)

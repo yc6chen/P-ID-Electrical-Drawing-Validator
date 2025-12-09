@@ -10,6 +10,13 @@ PyMuPDF>=1.23.0
 pytesseract>=0.3.10
 easyocr>=1.6.2
 
+# Phase 4: Production features
+reportlab>=4.0.0      # PDF report generation
+pandas>=2.0.0          # CSV export and data manipulation
+
+# Optional: Deployment
+# pyinstaller>=5.0.0   # Application packaging (uncomment for building executables)
+
 # Note: Tesseract-OCR must be installed on the system separately
 # Windows: Download from https://github.com/UB-Mannheim/tesseract/wiki
 # macOS: brew install tesseract

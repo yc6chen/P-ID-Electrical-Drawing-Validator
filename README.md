@@ -2,9 +2,9 @@
 
 A Python desktop application that validates P&ID and electrical drawings for P.Eng signatures from specific Canadian engineering associations (APEGA, APEGS, EGBC, Engineers Geoscientists Manitoba).
 
-## Current Status: Phase 2 Complete ✅
+## Current Status: Phase 4 Complete ✅
 
-The application now includes a fully functional **Detection Engine** that can automatically identify engineering seals and signature regions in drawings.
+The application is now **production-ready** with comprehensive batch processing, multi-page navigation, export functionality, and deployment packaging.
 
 ## Features
 
@@ -20,8 +20,24 @@ The application now includes a fully functional **Detection Engine** that can au
 - **Contour Detection**: Identifies rectangular signature blocks using shape analysis
 - **Color-Based Detection**: Finds colored engineering seals (red, blue, green, black)
 - **Visual Overlay**: Displays detected regions with colored bounding boxes and confidence scores
-- **ROI Extraction**: Isolates detected regions for future OCR processing (Phase 3)
+- **ROI Extraction**: Isolates detected regions for OCR processing
 - **Multiple Detection Methods**: Combines results from all detection algorithms for comprehensive coverage
+
+### Phase 3: OCR & Validation ✅
+- **Dual OCR Engines**: Tesseract and EasyOCR with automatic fallback
+- **Text Extraction**: Extracts text from detected seal/signature regions
+- **Association Validation**: Validates P.Eng signatures against Canadian associations (APEGA, APEGS, EGBC, Engineers Geoscientists Manitoba)
+- **License Number Detection**: Identifies and extracts P.Eng license numbers
+- **Confidence Scoring**: Provides confidence scores for validation results
+- **Multi-Engine Support**: Automatically switches between OCR engines for best results
+
+### Phase 4: Production Features ✅
+- **Multi-Page Navigation**: Navigate through multi-page PDFs with page controls
+- **Batch Processing**: Process multiple files in one operation with progress tracking
+- **Export & Reporting**: Generate PDF reports and CSV exports of validation results
+- **Performance Optimization**: Multi-threading, caching, and memory management
+- **User Settings**: Configurable processing parameters saved between sessions
+- **Deployment Packaging**: PyInstaller scripts for standalone executables
 
 ## Installation
 
@@ -97,6 +113,8 @@ drawing_validator/
 │   ├── application.py          # Main application class
 │   ├── pdf_processor.py        # PDF/image loading
 │   ├── image_processor.py      # Image preprocessing
+│   ├── config_manager.py       # Phase 4: User settings management
+│   ├── performance_cache.py    # Phase 4: Caching system
 │   └── settings.py             # Configuration
 ├── detection/                  # Phase 2: Detection module
 │   ├── seal_detector.py        # Main detection orchestrator
@@ -105,10 +123,33 @@ drawing_validator/
 │   ├── color_detector.py      # Color-based detection
 │   ├── region_processor.py    # ROI extraction
 │   └── detection_models.py    # Data models
+├── ocr/                        # Phase 3: OCR module
+│   ├── text_extractor.py       # Main OCR orchestrator
+│   ├── ocr_engines.py          # OCR engine wrappers
+│   ├── ocr_models.py           # OCR data models
+│   └── text_preprocessor.py   # Text preprocessing
+├── validation/                 # Phase 3: Validation module
+│   ├── association_validator.py  # P.Eng association validation
+│   ├── confidence_scorer.py    # Confidence scoring
+│   └── validation_models.py    # Validation data models
+├── batch/                      # Phase 4: Batch processing
+│   ├── batch_processor.py      # Batch orchestration
+│   └── batch_models.py         # Batch data models
+├── export/                     # Phase 4: Export module
+│   ├── report_generator.py     # PDF report generation
+│   └── csv_exporter.py         # CSV export
+├── navigation/                 # Phase 4: Multi-page navigation
+│   └── page_navigator.py       # Page navigation controls
 ├── ui/
 │   ├── main_window.py          # Main UI layout
 │   ├── image_viewer.py         # Enhanced image viewer
+│   ├── results_panel.py        # Results display
+│   ├── batch_panel.py          # Phase 4: Batch processing panel
+│   ├── settings_dialog.py      # Phase 4: Settings dialog
 │   └── file_browser.py         # File selection dialog
+├── deployment/                 # Phase 4: Deployment
+│   ├── build_spec.py           # PyInstaller spec
+│   └── README_DEPLOYMENT.md    # Deployment guide
 ├── tests/
 │   └── test_detection.py       # Unit tests
 ├── main.py                     # Application entry point
@@ -161,28 +202,56 @@ Or:
 python tests/test_detection.py
 ```
 
-## Roadmap
+## Advanced Features
 
-### Phase 3: OCR & Text Extraction (Upcoming)
-- Tesseract OCR integration
-- Text extraction from detected regions
-- Engineer name and license number parsing
-- Association identifier extraction
+### Batch Processing
+1. **Add Files**: Click "Add Files" or "Add Folder" in the Batch panel
+2. **Process**: Click "Process Batch" to validate all files
+3. **Progress Tracking**: Monitor real-time progress with cancel capability
+4. **Results**: View comprehensive batch summary after processing
 
-### Phase 4: Validation & Verification (Upcoming)
-- Association database lookup
-- License number validation
-- Multi-page batch processing
-- Validation report generation
-- Export results to PDF/CSV
+### Multi-Page PDFs
+- Automatically loads all pages from PDF documents
+- Navigate using page controls
+- Process all pages with one click
+- View page-specific validation results
+
+### Export & Reporting
+- **PDF Reports**: Generate professional validation reports with detailed results
+- **CSV Export**: Export results to CSV for database import or analysis
+- **Batch Summaries**: Get statistics across all processed files
+- Access export options from the File menu
+
+### Settings & Configuration
+- **Processing Mode**: Fast, Balanced, Accurate, or Thorough
+- **OCR Engine**: Choose between Tesseract or EasyOCR
+- **Performance**: Configure caching, threading, and DPI settings
+- **Export Options**: Set default export formats and auto-save preferences
+- Access settings from Tools > Settings menu
 
 ## Dependencies
 
-- **pymupdf** (>=1.24.0): PDF processing
+### Core Dependencies
+- **pymupdf** (>=1.23.0): PDF processing
 - **Pillow** (>=10.0.0): Image handling
-- **pypdf** (>=3.17.0): PDF metadata
 - **opencv-python** (>=4.8.0): Computer vision and detection
 - **numpy** (>=1.24.0): Numerical operations
+
+### Phase 3 Dependencies
+- **pytesseract** (>=0.3.10): OCR engine wrapper
+- **easyocr** (>=1.6.2): Alternative OCR engine
+
+### Phase 4 Dependencies
+- **reportlab** (>=4.0.0): PDF report generation
+- **pandas** (>=2.0.0): CSV export and data manipulation
+
+### Optional
+- **pyinstaller** (>=5.0.0): Application packaging for deployment
+
+**Note**: Tesseract-OCR must be installed separately on the system:
+- Windows: https://github.com/UB-Mannheim/tesseract/wiki
+- macOS: `brew install tesseract`
+- Linux: `sudo apt-get install tesseract-ocr`
 
 ## Troubleshooting
 
