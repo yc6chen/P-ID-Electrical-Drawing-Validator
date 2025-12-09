@@ -51,8 +51,8 @@ class DrawingValidatorApp(tk.Tk):
 
         # Phase 4: Configuration and performance
         self.config_manager = ConfigManager()
-        self.config = self.config_manager.get_config()
-        self.cache = ProcessingCache(max_size=self.config.cache_size) if self.config.enable_cache else None
+        self.app_config = self.config_manager.get_config()
+        self.cache = ProcessingCache(max_size=self.app_config.cache_size) if self.app_config.enable_cache else None
 
         # Initialize detection engine (Phase 2)
         try:
@@ -79,7 +79,7 @@ class DrawingValidatorApp(tk.Tk):
         # Phase 4: Navigation, batch processing, and export
         self.page_navigator = PageNavigator()
         self.page_navigator.on_page_changed = self._on_page_changed
-        self.batch_processor = BatchProcessor(max_workers=self.config.batch_max_workers)
+        self.batch_processor = BatchProcessor(max_workers=self.app_config.batch_max_workers)
         self.report_generator = ReportGenerator()
         self.csv_exporter = CSVExporter()
 
@@ -108,6 +108,9 @@ class DrawingValidatorApp(tk.Tk):
 
         # Center window on screen
         self._center_window()
+
+        # Set up window close handler
+        self.protocol("WM_DELETE_WINDOW", self.quit_application)
 
         # Set status
         self.main_window.update_status("Ready")
@@ -565,7 +568,7 @@ class DrawingValidatorApp(tk.Tk):
             )
 
             # Auto-open if configured
-            if self.config.auto_open_reports:
+            if self.app_config.auto_open_reports:
                 import os
                 import platform
                 if platform.system() == 'Windows':
@@ -624,11 +627,11 @@ class DrawingValidatorApp(tk.Tk):
 
         # Reload config if changed
         if hasattr(settings_dialog, 'config_changed') and settings_dialog.config_changed:
-            self.config = self.config_manager.get_config()
+            self.app_config = self.config_manager.get_config()
 
             # Update components with new config
             if self.cache:
-                self.cache.resize(self.config.cache_size)
+                self.cache.resize(self.app_config.cache_size)
 
             messagebox.showinfo(
                 "Settings Updated",

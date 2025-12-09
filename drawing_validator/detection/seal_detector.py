@@ -12,7 +12,7 @@ from .detection_models import DetectedRegion, DetectionResult, DetectionConfig
 from .template_matcher import TemplateMatcher
 from .contour_detector import ContourDetector
 from .color_detector import ColorDetector
-from ..core.image_processor import ImagePreprocessor
+from core.image_processor import ImagePreprocessor
 
 
 class SealDetector:

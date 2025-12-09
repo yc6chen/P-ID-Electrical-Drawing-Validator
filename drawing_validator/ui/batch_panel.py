@@ -175,26 +175,33 @@ class BatchProcessingPanel(tk.Frame):
         )
 
         if folder:
-            # Supported extensions
-            supported_exts = ('.pdf', '.png', '.jpg', '.jpeg', '.tiff', '.tif', '.bmp')
+            try:
+                # Supported extensions
+                supported_exts = ('.pdf', '.png', '.jpg', '.jpeg', '.tiff', '.tif', '.bmp')
 
-            # Find all supported files
-            files = []
-            for filename in os.listdir(folder):
-                if filename.lower().endswith(supported_exts):
-                    files.append(os.path.join(folder, filename))
+                # Find all supported files
+                files = []
+                for filename in os.listdir(folder):
+                    if filename.lower().endswith(supported_exts):
+                        files.append(os.path.join(folder, filename))
 
-            if files:
-                added_files = self.batch_processor.add_files(files)
+                if files:
+                    added_files = self.batch_processor.add_files(files)
 
-                for file in added_files:
-                    self.file_listbox.insert(tk.END, os.path.basename(file))
+                    for file in added_files:
+                        self.file_listbox.insert(tk.END, os.path.basename(file))
 
-                self.status_var.set(f"Added {len(added_files)} file(s) from folder")
-            else:
-                messagebox.showinfo(
-                    "No Files Found",
-                    "No supported files found in the selected folder."
+                    self.status_var.set(f"Added {len(added_files)} file(s) from folder")
+                else:
+                    messagebox.showinfo(
+                        "No Files Found",
+                        "No supported files found in the selected folder."
+                    )
+            except Exception as e:
+                logger.error(f"Error reading folder: {str(e)}")
+                messagebox.showerror(
+                    "Error",
+                    f"Failed to read folder:\n{str(e)}"
                 )
 
     def _clear_list(self):
