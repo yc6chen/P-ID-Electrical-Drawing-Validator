@@ -14,6 +14,14 @@ easyocr>=1.6.2
 reportlab>=4.0.0      # PDF report generation
 pandas>=2.0.0          # CSV export and data manipulation
 
+# Phase 5: Digital signature validation
+cryptography>=41.0.0   # Cryptographic primitives and certificate handling
+pyOpenSSL>=23.2.0      # OpenSSL bindings for certificate validation
+asn1crypto>=1.5.1      # ASN.1 parsing for certificates
+certvalidator>=0.11.1  # Certificate validation library
+requests>=2.31.0       # For OCSP/CRL checking
+certifi>=2023.7.22     # Mozilla's root certificates
+
 # Optional: Deployment
 # pyinstaller>=5.0.0   # Application packaging (uncomment for building executables)
 

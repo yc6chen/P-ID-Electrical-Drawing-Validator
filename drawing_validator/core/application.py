@@ -27,6 +27,17 @@ from batch.batch_processor import BatchProcessor
 from export.report_generator import ReportGenerator
 from export.csv_exporter import CSVExporter
 
+# Phase 5: Digital signature and hybrid validation
+try:
+    from digital.trust_store import TrustStore
+    from hybrid.dual_validator import HybridValidator
+    DIGITAL_VALIDATION_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: Digital signature validation not available: {e}")
+    TrustStore = None
+    HybridValidator = None
+    DIGITAL_VALIDATION_AVAILABLE = False
+
 
 class DrawingValidatorApp(tk.Tk):
     """
@@ -83,10 +94,27 @@ class DrawingValidatorApp(tk.Tk):
         self.report_generator = ReportGenerator()
         self.csv_exporter = CSVExporter()
 
+        # Phase 5: Digital signature and hybrid validation
+        self.digital_validation_enabled = False
+        self.trust_store = None
+        self.hybrid_validator = None
+
+        if DIGITAL_VALIDATION_AVAILABLE:
+            try:
+                self.trust_store = TrustStore()
+                # Pass a reference to the processing pipeline for seal validation
+                self.hybrid_validator = HybridValidator(trust_store=self.trust_store)
+                self.digital_validation_enabled = True
+                print("Digital signature validation initialized successfully")
+            except Exception as e:
+                print(f"Warning: Could not initialize digital signature validation: {e}")
+                self.digital_validation_enabled = False
+
         # Current document state
         self.current_document: Optional[Dict] = None
         self.detection_results = None  # Store detection results
         self.validation_results = None  # Store validation results
+        self.hybrid_validation_results = None  # Store hybrid validation results (Phase 5)
         self.batch_result = None  # Store batch processing results
 
         # Create main window UI

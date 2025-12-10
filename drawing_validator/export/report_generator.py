@@ -299,6 +299,11 @@ class ReportGenerator:
             elements.append(page_table)
             elements.append(Spacer(1, 15))
 
+        # Phase 5: Digital signature information
+        if hasattr(file_result, 'hybrid_validation'):
+            digital_elements = self._create_digital_signature_section(file_result.hybrid_validation)
+            elements.extend(digital_elements)
+
         return elements
 
     def generate_simple_report(
@@ -383,6 +388,97 @@ class ReportGenerator:
 
         summary = f"Status: {valid} | Regions detected: {regions}"
         elements.append(Paragraph(summary, self.styles['Normal']))
+        elements.append(Spacer(1, 10))
+
+        return elements
+
+    def _create_digital_signature_section(self, hybrid_validation) -> List[Flowable]:
+        """
+        Create digital signature section for the report.
+
+        Args:
+            hybrid_validation: HybridValidationResult or dict with digital signature info
+
+        Returns:
+            List of report elements
+        """
+        elements = []
+
+        # Check if we have digital validation data
+        digital_validation = None
+        if hasattr(hybrid_validation, 'digital_validation'):
+            digital_validation = hybrid_validation.digital_validation
+        elif isinstance(hybrid_validation, dict):
+            digital_validation = hybrid_validation.get('digital_validation')
+
+        if not digital_validation:
+            return elements
+
+        # Section header
+        elements.append(Paragraph("Digital Signature Validation", self.styles['Heading4']))
+        elements.append(Spacer(1, 8))
+
+        # Digital signature summary
+        if digital_validation.get('signatures_found', False):
+            total_sigs = digital_validation.get('total_signatures', 0)
+            valid_sigs = digital_validation.get('valid_signatures', 0)
+            invalid_sigs = digital_validation.get('invalid_signatures', 0)
+            trust_status = digital_validation.get('trust_status', 'unknown')
+
+            summary_data = [
+                ["Total Signatures:", str(total_sigs)],
+                ["Valid Signatures:", str(valid_sigs)],
+                ["Invalid Signatures:", str(invalid_sigs)],
+                ["Trust Status:", trust_status.replace('_', ' ').title()],
+            ]
+
+            # Add certificate associations
+            cert_associations = digital_validation.get('certificate_associations', [])
+            if cert_associations:
+                summary_data.append(["Certificate Associations:", ", ".join(cert_associations)])
+
+            sig_table = Table(summary_data, colWidths=[150, 300])
+            sig_table.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
+                ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+                ('GRID', (0, 0), (-1, -1), 0.25, colors.lightgrey),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e8f4f8')),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('TOPPADDING', (0, 0), (-1, -1), 6),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ]))
+
+            elements.append(sig_table)
+            elements.append(Spacer(1, 10))
+
+            # Detailed signature information
+            signatures = digital_validation.get('signatures', [])
+            if signatures:
+                elements.append(Paragraph("Signature Details:", self.styles['Normal']))
+                elements.append(Spacer(1, 5))
+
+                for i, sig in enumerate(signatures, 1):
+                    sig_text = f"<b>Signature #{i}:</b> "
+                    sig_text += f"Type: {sig.get('signature_type', 'Unknown')}"
+
+                    if sig.get('signer_name'):
+                        sig_text += f" | Signer: {sig['signer_name']}"
+
+                    if sig.get('signature_valid'):
+                        sig_text += " | Status: ✓ Valid"
+                    else:
+                        sig_text += " | Status: ✗ Invalid"
+
+                    elements.append(Paragraph(sig_text, self.styles['Normal']))
+                    elements.append(Spacer(1, 3))
+
+        else:
+            elements.append(Paragraph(
+                "No digital signatures found in this document.",
+                self.styles['Normal']
+            ))
+
         elements.append(Spacer(1, 10))
 
         return elements

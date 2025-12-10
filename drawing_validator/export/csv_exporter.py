@@ -127,6 +127,26 @@ class CSVExporter:
         if hasattr(file_result, 'get_all_license_numbers'):
             row['License Numbers'] = '; '.join(file_result.get_all_license_numbers())
 
+        # Phase 5: Add digital signature information
+        if hasattr(file_result, 'hybrid_validation'):
+            hybrid_val = file_result.hybrid_validation
+            digital_val = None
+
+            if hasattr(hybrid_val, 'digital_validation'):
+                digital_val = hybrid_val.digital_validation
+            elif isinstance(hybrid_val, dict):
+                digital_val = hybrid_val.get('digital_validation')
+
+            if digital_val:
+                row['Digital Signatures Found'] = 'Yes' if digital_val.get('signatures_found', False) else 'No'
+                row['Total Digital Signatures'] = digital_val.get('total_signatures', 0)
+                row['Valid Digital Signatures'] = digital_val.get('valid_signatures', 0)
+                row['Digital Trust Status'] = digital_val.get('trust_status', 'unknown')
+
+                cert_assocs = digital_val.get('certificate_associations', [])
+                if cert_assocs:
+                    row['Certificate Associations'] = '; '.join(cert_assocs)
+
         return row
 
     def _create_page_row(self, page, page_num: int) -> Dict[str, Any]:
